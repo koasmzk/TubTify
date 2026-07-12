@@ -16,7 +16,7 @@ A pixel-perfect Spotify-inspired desktop music streaming UI built with Next.js 1
 
 ## Prerequisites
 
-- Node.js 18+
+- Node.js Ver 15+
 - [`yt-dlp.exe`](https://github.com/yt-dlp/yt-dlp/releases) — download and place in `bin/yt-dlp.exe` (not included in repo)
 - [`bgutil-ytdlp-pot-provider`](https://github.com/Brainicism/bgutil-ytdlp-pot-provider) — cloned and built separately (runs as a standalone PO Token provider server)
 
