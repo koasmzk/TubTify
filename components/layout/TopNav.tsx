@@ -112,12 +112,17 @@ export default function TopNav() {
       {/* Right */}
       <div className="flex items-center gap-4">
         <button className="hidden lg:block bg-white text-black font-bold text-sm px-4 py-1.5 rounded-full hover:scale-105 transition-transform duration-200">
-          Explore Premium
+          Experimental
         </button>
-        <button className="hidden lg:flex items-center gap-1 text-muted-foreground hover:text-white hover:scale-105 transition-all duration-200 text-sm font-bold">
+        <a
+          href="https://www.spotify.com"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="hidden lg:flex items-center gap-1 text-muted-foreground hover:text-white hover:scale-105 transition-all duration-200 text-sm font-bold"
+        >
           <Monitor className="w-4 h-4" strokeWidth={2} />
-          Install App
-        </button>
+          Visit Original
+        </a>
         <div className="flex items-center gap-2">
           <button className="w-8 h-8 flex items-center justify-center text-muted-foreground hover:text-white transition-colors">
             <Bell className="w-4 h-4" strokeWidth={2} />
