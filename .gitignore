@@ -10,7 +10,7 @@ out/
 # production
 /build
 
-# env files (JANGAN pernah push ini — isinya API keys/secrets)
+# env files 
 .env
 .env.local
 .env.development.local
@@ -36,3 +36,7 @@ Thumbs.db
 # editor
 .vscode/
 .idea/
+
+# yt-dlp binaries
+bin/yt-dlp.exe
+bin/yt-dlp-plugins/
