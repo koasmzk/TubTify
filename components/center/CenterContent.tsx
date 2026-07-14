@@ -1,8 +1,9 @@
 // components/center/CenterContent.tsx
 "use client";
 
-import { useEffect, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import { motion } from "framer-motion";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { usePlayerStore } from "@/lib/store";
 import LyricsView from "@/components/center/LyricsView";
 
@@ -31,9 +32,53 @@ type Track = {
   duration: number;
 };
 
+// Reusable skeleton card, samain dimensi sama card asli biar gak "loncat" pas real data masuk
+function SkeletonCard() {
+  return (
+    <div className="w-[212px] flex-shrink-0 p-4 animate-pulse">
+      <div className="w-full aspect-square rounded-md mb-4 bg-[rgba(255,255,255,0.08)]" />
+      <div className="h-4 w-4/5 rounded bg-[rgba(255,255,255,0.08)] mb-2" />
+      <div className="h-3 w-3/5 rounded bg-[rgba(255,255,255,0.08)]" />
+    </div>
+  );
+}
+
+// Wrapper slider: scroll horizontal + tombol panah kiri/kanan yang muncul on-hover
+function HorizontalSlider({ children }: { children: React.ReactNode }) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  const scroll = (dir: "left" | "right") => {
+    scrollRef.current?.scrollBy({ left: dir === "left" ? -640 : 640, behavior: "smooth" });
+  };
+
+  return (
+    <div className="relative group/slider">
+      <button
+        onClick={() => scroll("left")}
+        className="hidden group-hover/slider:flex absolute left-0 top-1/2 -translate-y-1/2 z-10 w-8 h-8 rounded-full bg-black/70 hover:bg-black items-center justify-center shadow-lg"
+      >
+        <ChevronLeft size={18} className="text-white" />
+      </button>
+
+      <div ref={scrollRef} className="flex gap-6 overflow-x-auto scrollbar-none scroll-smooth pb-4 -mx-6 px-6">
+        {children}
+      </div>
+
+      <button
+        onClick={() => scroll("right")}
+        className="hidden group-hover/slider:flex absolute right-0 top-1/2 -translate-y-1/2 z-10 w-8 h-8 rounded-full bg-black/70 hover:bg-black items-center justify-center shadow-lg"
+      >
+        <ChevronRight size={18} className="text-white" />
+      </button>
+    </div>
+  );
+}
+
 export default function CenterContent() {
   const [tracks, setTracks] = useState<Track[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showAllTracks, setShowAllTracks] = useState(false); // toggle "From YouTube": slider <-> grid
+  const [showAllRecommended, setShowAllRecommended] = useState(false); // toggle "Recommended": slider <-> grid
 
   const playTrack = usePlayerStore((state) => state.playTrack);
   const searchQuery = usePlayerStore((state) => state.searchQuery);
@@ -103,23 +148,46 @@ export default function CenterContent() {
                 <h2 className="text-2xl font-bold text-white hover:underline cursor-pointer">
                   {searchQuery ? `Results for "${searchQuery}"` : "From YouTube"}
                 </h2>
-                <button className="text-sm font-bold text-muted-foreground hover:underline">Show all</button>
+                {/* toggle label berubah sesuai mode aktif */}
+                <button
+                  onClick={() => setShowAllTracks((v) => !v)}
+                  className="text-sm font-bold text-muted-foreground hover:underline"
+                >
+                  {showAllTracks ? "Show less" : "Show all"}
+                </button>
               </div>
 
               {loading ? (
+                // skeleton placeholder selama fetch
                 <div className="flex gap-6 overflow-x-auto scrollbar-none pb-4 -mx-6 px-6">
-                  {Array.from({ length: 5 }).map((_, i) => (
-                    <div key={i} className="w-[212px] flex-shrink-0 p-4 animate-pulse">
-                      {/* placeholder cover, samain sama aspect-square cover asli */}
-                      <div className="w-full aspect-square rounded-md mb-4 bg-[rgba(255,255,255,0.08)]" />
-                      {/* placeholder title & artist, height & width dikira-kira biar mirip line text asli */}
-                      <div className="h-4 w-4/5 rounded bg-[rgba(255,255,255,0.08)] mb-2" />
-                      <div className="h-3 w-3/5 rounded bg-[rgba(255,255,255,0.08)]" />
-                    </div>
+                  {Array.from({ length: 5 }).map((_, i) => <SkeletonCard key={i} />)}
+                </div>
+              ) : showAllTracks ? (
+                // mode grid: semua track keliatan sekaligus, gak perlu slider
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-6">
+                  {tracks.map((track) => (
+                    <motion.div
+                      key={track.id}
+                      whileHover={{ scale: 1.02 }}
+                      className="bg-[#181818] p-4 rounded-xl hover:bg-[#282828] transition-colors duration-300 cursor-pointer group"
+                      onClick={() => playTrack(track, tracks)}
+                    >
+                      <div className="w-full aspect-square rounded-md mb-4 shadow-[0_8px_24px_rgba(0,0,0,0.5)] relative overflow-hidden">
+                        <img src={track.cover} alt={track.title} className="w-full h-full object-cover" />
+                        <div className="absolute right-2 bottom-2 opacity-0 group-hover:opacity-100 transition-all duration-300 translate-y-2 group-hover:translate-y-0">
+                          <div className="w-12 h-12 rounded-full bg-primary flex items-center justify-center shadow-xl">
+                            <div className="w-0 h-0 border-t-[8px] border-t-transparent border-l-[14px] border-l-black border-b-[8px] border-b-transparent ml-1"></div>
+                          </div>
+                        </div>
+                      </div>
+                      <h3 className="font-bold text-white mb-1 truncate">{track.title}</h3>
+                      <p className="text-sm text-muted-foreground line-clamp-2 leading-tight">{track.artist}</p>
+                    </motion.div>
                   ))}
                 </div>
               ) : (
-                <div className="flex gap-6 overflow-x-auto scrollbar-none pb-4 -mx-6 px-6">
+                // mode default: slider horizontal + tombol panah
+                <HorizontalSlider>
                   {tracks.map((track) => (
                     <motion.div
                       key={track.id}
@@ -139,7 +207,7 @@ export default function CenterContent() {
                       <p className="text-sm text-muted-foreground line-clamp-2 leading-tight">{track.artist}</p>
                     </motion.div>
                   ))}
-                </div>
+                </HorizontalSlider>
               )}
             </section>
 
@@ -172,27 +240,56 @@ export default function CenterContent() {
             <section className="mb-10">
               <div className="flex items-end justify-between mb-4">
                 <h2 className="text-2xl font-bold text-white hover:underline cursor-pointer">Recommended for today</h2>
-                <button className="text-sm font-bold text-muted-foreground hover:underline">Show all</button>
+                <button
+                  onClick={() => setShowAllRecommended((v) => !v)}
+                  className="text-sm font-bold text-muted-foreground hover:underline"
+                >
+                  {showAllRecommended ? "Show less" : "Show all"}
+                </button>
               </div>
-              <div className="flex gap-6 overflow-x-auto scrollbar-none pb-4 -mx-6 px-6">
-                {RECOMMENDED.map((item) => (
-                  <motion.div
-                    key={item.id}
-                    whileHover={{ scale: 1.02 }}
-                    className="bg-[#181818] p-4 rounded-xl hover:bg-[#282828] transition-colors duration-300 cursor-pointer w-[212px] flex-shrink-0 group"
-                  >
-                    <div className={`w-full aspect-square ${item.gradient} rounded-md mb-4 shadow-[0_8px_24px_rgba(0,0,0,0.5)] relative`}>
-                      <div className="absolute right-2 bottom-2 opacity-0 group-hover:opacity-100 transition-all duration-300 translate-y-2 group-hover:translate-y-0">
-                        <div className="w-12 h-12 rounded-full bg-primary flex items-center justify-center shadow-xl">
-                          <div className="w-0 h-0 border-t-[8px] border-t-transparent border-l-[14px] border-l-black border-b-[8px] border-b-transparent ml-1"></div>
+
+              {showAllRecommended ? (
+                // mode grid, sama pattern kayak From YouTube
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-6">
+                  {RECOMMENDED.map((item) => (
+                    <motion.div
+                      key={item.id}
+                      whileHover={{ scale: 1.02 }}
+                      className="bg-[#181818] p-4 rounded-xl hover:bg-[#282828] transition-colors duration-300 cursor-pointer group"
+                    >
+                      <div className={`w-full aspect-square ${item.gradient} rounded-md mb-4 shadow-[0_8px_24px_rgba(0,0,0,0.5)] relative`}>
+                        <div className="absolute right-2 bottom-2 opacity-0 group-hover:opacity-100 transition-all duration-300 translate-y-2 group-hover:translate-y-0">
+                          <div className="w-12 h-12 rounded-full bg-primary flex items-center justify-center shadow-xl">
+                            <div className="w-0 h-0 border-t-[8px] border-t-transparent border-l-[14px] border-l-black border-b-[8px] border-b-transparent ml-1"></div>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                    <h3 className="font-bold text-white mb-1 truncate">{item.title}</h3>
-                    <p className="text-sm text-muted-foreground line-clamp-2 leading-tight">{item.artist}</p>
-                  </motion.div>
-                ))}
-              </div>
+                      <h3 className="font-bold text-white mb-1 truncate">{item.title}</h3>
+                      <p className="text-sm text-muted-foreground line-clamp-2 leading-tight">{item.artist}</p>
+                    </motion.div>
+                  ))}
+                </div>
+              ) : (
+                <HorizontalSlider>
+                  {RECOMMENDED.map((item) => (
+                    <motion.div
+                      key={item.id}
+                      whileHover={{ scale: 1.02 }}
+                      className="bg-[#181818] p-4 rounded-xl hover:bg-[#282828] transition-colors duration-300 cursor-pointer w-[212px] flex-shrink-0 group"
+                    >
+                      <div className={`w-full aspect-square ${item.gradient} rounded-md mb-4 shadow-[0_8px_24px_rgba(0,0,0,0.5)] relative`}>
+                        <div className="absolute right-2 bottom-2 opacity-0 group-hover:opacity-100 transition-all duration-300 translate-y-2 group-hover:translate-y-0">
+                          <div className="w-12 h-12 rounded-full bg-primary flex items-center justify-center shadow-xl">
+                            <div className="w-0 h-0 border-t-[8px] border-t-transparent border-l-[14px] border-l-black border-b-[8px] border-b-transparent ml-1"></div>
+                          </div>
+                        </div>
+                      </div>
+                      <h3 className="font-bold text-white mb-1 truncate">{item.title}</h3>
+                      <p className="text-sm text-muted-foreground line-clamp-2 leading-tight">{item.artist}</p>
+                    </motion.div>
+                  ))}
+                </HorizontalSlider>
+              )}
             </section>
           </div>
         </div>
