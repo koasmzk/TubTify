@@ -67,9 +67,12 @@ export default function LyricsView() {
           <p className="text-white text-2xl leading-relaxed whitespace-pre-line max-w-2xl mx-auto py-12">
             {currentTrack.lyrics}
           </p>
-        ) : (
-          <p className="text-muted-foreground py-12 text-center">No lyrics available for this track.</p>
-        )}
+          ) : (
+            <div className="py-12 text-center text-muted-foreground">
+              <p className="font-bold">No lyrics are available for this song.</p>
+              <p>Lyrics will appear when they become available.</p>
+            </div>
+          )}
       </div>
     </div>
   );
