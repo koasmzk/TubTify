@@ -107,7 +107,17 @@ export default function CenterContent() {
               </div>
 
               {loading ? (
-                <p className="text-muted-foreground text-sm">Loading tracks...</p>
+                <div className="flex gap-6 overflow-x-auto scrollbar-none pb-4 -mx-6 px-6">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <div key={i} className="w-[212px] flex-shrink-0 p-4 animate-pulse">
+                      {/* placeholder cover, samain sama aspect-square cover asli */}
+                      <div className="w-full aspect-square rounded-md mb-4 bg-[rgba(255,255,255,0.08)]" />
+                      {/* placeholder title & artist, height & width dikira-kira biar mirip line text asli */}
+                      <div className="h-4 w-4/5 rounded bg-[rgba(255,255,255,0.08)] mb-2" />
+                      <div className="h-3 w-3/5 rounded bg-[rgba(255,255,255,0.08)]" />
+                    </div>
+                  ))}
+                </div>
               ) : (
                 <div className="flex gap-6 overflow-x-auto scrollbar-none pb-4 -mx-6 px-6">
                   {tracks.map((track) => (
