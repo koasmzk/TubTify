@@ -88,7 +88,7 @@ export default function CenterContent() {
     async function fetchTracks() {
       setLoading(true);
       try {
-        const q = searchQuery || "top hits 2026";
+        const q = searchQuery || "trending songs 2026 official audio";
         const res = await fetch(`/api/search?q=${encodeURIComponent(q)}`);
         const data = await res.json();
         setTracks(data.tracks ?? []);
