@@ -140,3 +140,7 @@
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+button:not(:disabled) {
+  cursor: pointer;
+}

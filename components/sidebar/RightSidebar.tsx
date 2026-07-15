@@ -1,11 +1,11 @@
 "use client";
 
-import { useState } from "react";
 import { X, MoreHorizontal, ChevronLeft } from "lucide-react";
 import { usePlayerStore } from "@/lib/store";
 
 export default function RightSidebar() {
-  const [isOpen, setIsOpen] = useState(true);
+  const isOpen = usePlayerStore((s) => s.showQueue);
+  const toggleQueue = usePlayerStore((s) => s.toggleQueue);
 
   const currentTrack = usePlayerStore((s) => s.currentTrack);
   const queue = usePlayerStore((s) => s.queue);
@@ -18,7 +18,7 @@ export default function RightSidebar() {
     return (
       <div className="hidden lg:flex w-10 bg-[#0A0A0A] rounded-xl items-center justify-center ml-2">
         <button
-          onClick={() => setIsOpen(true)}
+          onClick={toggleQueue}
           className="w-8 h-8 flex items-center justify-center text-muted-foreground hover:text-white hover:bg-[#1A1A1A] rounded-full transition-colors"
           aria-label="Buka Queue"
         >
@@ -30,7 +30,6 @@ export default function RightSidebar() {
 
   return (
     <div className="hidden lg:flex w-[300px] bg-[#0A0A0A] rounded-xl flex flex-col overflow-hidden">
-      {/* Header */}
       <div className="p-4 flex items-center justify-between">
         <h2 className="font-bold text-[15px] text-white">Queue</h2>
         <div className="flex items-center gap-1">
@@ -38,7 +37,7 @@ export default function RightSidebar() {
             <MoreHorizontal className="w-5 h-5" strokeWidth={2} />
           </button>
           <button
-            onClick={() => setIsOpen(false)}
+            onClick={toggleQueue}
             className="w-8 h-8 flex items-center justify-center text-muted-foreground hover:text-white hover:bg-[#1A1A1A] rounded-full transition-colors"
             aria-label="Tutup Queue"
           >
