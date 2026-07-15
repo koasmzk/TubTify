@@ -279,7 +279,7 @@ export default function BottomPlayer() {
             <div className="w-2.5 h-2.5 border-t border-r border-white"></div>
           </div>
         </div>
-        <div className="flex flex-col justify-center overflow-hidden mr-2 w-full">
+        <div className="flex flex-col justify-center overflow-hidden min-w-0 max-w-[160px] sm:max-w-[220px]">
           <MarqueeText
             text={currentTrack?.title ?? "No track playing"}
             className="text-sm font-medium text-white"
@@ -289,11 +289,10 @@ export default function BottomPlayer() {
             className="text-xs text-muted-foreground"
           />
         </div>
-        {/* like default outline (belum fill, warna muted) — fill + primary cuma kalau track ini sudah di-like */}
         <button
           onClick={() => currentTrack && toggleLike(currentTrack.id)}
           disabled={!currentTrack}
-          className={`hover:scale-105 transition-transform disabled:opacity-40 ${
+          className={`flex-shrink-0 hover:scale-105 transition-transform disabled:opacity-40 ${
             isLiked ? "text-primary" : "text-muted-foreground hover:text-white"
           }`}
         >
