@@ -8,6 +8,7 @@ import {
   SkipForward,
   Shuffle,
   Repeat,
+  Repeat1,
   Mic2,
   ListMusic,
   MonitorSpeaker,
@@ -76,6 +77,17 @@ export default function BottomPlayer() {
   const playPrevious = usePlayerStore((state) => state.playPrevious);
   const lyricsCache = usePlayerStore((state) => state.lyricsCache);
 
+  const isShuffle = usePlayerStore((state) => state.isShuffle);
+  const toggleShuffle = usePlayerStore((state) => state.toggleShuffle);
+  const repeatMode = usePlayerStore((state) => state.repeatMode); 
+  const cycleRepeat = usePlayerStore((state) => state.cycleRepeat);
+  const showQueue = usePlayerStore((state) => state.showQueue);
+  const toggleQueue = usePlayerStore((state) => state.toggleQueue);
+  const likedTrackIds = usePlayerStore((state) => state.likedTrackIds);
+  const toggleLike = usePlayerStore((state) => state.toggleLike);
+
+  const isLiked = currentTrack ? likedTrackIds.has(currentTrack.id) : false;
+
   const [localTime, setLocalTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(60);
@@ -132,8 +144,10 @@ export default function BottomPlayer() {
     clearSeekRequest();
   }, [seekRequest]);
 
-  // re-apply sinkId setiap kali src audio ganti (browser suka reset sinkId
-  // ke default begitu .src di-assign ulang / track baru di-load)
+  useEffect(() => {
+    if (audioRef.current) audioRef.current.loop = repeatMode === "one";
+  }, [repeatMode]);
+
   useEffect(() => {
     const el = audioRef.current as any;
     if (!el?.setSinkId || activeOutputId === "default") return;
@@ -174,9 +188,6 @@ export default function BottomPlayer() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [outputMenuOpen]);
 
-  // cache permission mic biar getUserMedia gak re-trigger tiap buka dropdown
-  // (tiap getUserMedia dipanggil, Windows bisa switch profile Bluetooth ke HFP,
-  // yang bikin OS ngunci output audio balik ke TWS meski sinkId di-set ke device lain)
   const requestDeviceLabels = async () => {
     setOutputError(null);
 
@@ -222,10 +233,6 @@ export default function BottomPlayer() {
 
     try {
       await el.setSinkId(deviceId);
-      // DEBUG: cek apakah sinkId beneran ke-apply di elemen audio.
-      // Kalau ini kepanggil sukses tapi suara TETAP di device lama,
-      // berarti ini bukan bug JS — itu OS/driver yang override routing
-      // (paling sering karena Bluetooth device masih di HFP/communication profile).
       console.log("[audio-output] setSinkId success. el.sinkId now:", el.sinkId, "target was:", deviceId);
       setActiveOutputId(deviceId);
       setOutputMenuOpen(false);
@@ -256,7 +263,11 @@ export default function BottomPlayer() {
           setCurrentTime(time);
         }}
         onLoadedMetadata={(e) => setDuration(e.currentTarget.duration)}
-        onEnded={() => playNext()}
+        onEnded={() => {
+          // repeat "one" ditangani via native loop attribute (lihat useEffect di atas),
+          // jadi onEnded gak akan fire untuk itu. Sisanya lempar ke playNext.
+          if (repeatMode !== "one") playNext();
+        }}
       />
 
       <div className="flex items-center gap-3 w-1/3 min-w-[180px]">
@@ -278,14 +289,26 @@ export default function BottomPlayer() {
             className="text-xs text-muted-foreground"
           />
         </div>
-        <button className="text-primary hover:scale-105 transition-transform">
-          <Heart className="w-4 h-4 fill-current" strokeWidth={2} />
+        {/* like default outline (belum fill, warna muted) — fill + primary cuma kalau track ini sudah di-like */}
+        <button
+          onClick={() => currentTrack && toggleLike(currentTrack.id)}
+          disabled={!currentTrack}
+          className={`hover:scale-105 transition-transform disabled:opacity-40 ${
+            isLiked ? "text-primary" : "text-muted-foreground hover:text-white"
+          }`}
+        >
+          <Heart className="w-4 h-4" strokeWidth={2} fill={isLiked ? "currentColor" : "none"} />
         </button>
       </div>
 
       <div className="flex flex-col items-center justify-center max-w-[722px] w-1/3">
         <div className="flex items-center gap-5 mb-1">
-          <button className="text-muted-foreground hover:text-white transition-colors">
+          {/* shuffle: toggle di store, warna primary kalau aktif */}
+          <button
+            onClick={toggleShuffle}
+            className={`transition-colors ${isShuffle ? "text-primary" : "text-muted-foreground hover:text-white"}`}
+            title="Shuffle"
+          >
             <Shuffle className="w-4 h-4" strokeWidth={2} />
           </button>
           <button onClick={playPrevious} className="text-muted-foreground hover:text-white transition-colors">
@@ -305,8 +328,17 @@ export default function BottomPlayer() {
           <button onClick={() => playNext()} className="text-muted-foreground hover:text-white transition-colors">
             <SkipForward className="w-5 h-5" strokeWidth={2} fill="currentColor" />
           </button>
-          <button className="text-muted-foreground hover:text-white transition-colors">
-            <Repeat className="w-4 h-4" strokeWidth={2} />
+          {/* repeat: cycle off -> all -> one, icon ganti jadi Repeat1 pas mode "one" */}
+          <button
+            onClick={cycleRepeat}
+            className={`transition-colors ${repeatMode !== "off" ? "text-primary" : "text-muted-foreground hover:text-white"}`}
+            title={`Repeat: ${repeatMode}`}
+          >
+            {repeatMode === "one" ? (
+              <Repeat1 className="w-4 h-4" strokeWidth={2} />
+            ) : (
+              <Repeat className="w-4 h-4" strokeWidth={2} />
+            )}
           </button>
         </div>
 
@@ -335,7 +367,12 @@ export default function BottomPlayer() {
         >
           <Mic2 className="w-4 h-4" strokeWidth={2} />
         </button>
-        <button className="text-primary transition-colors relative" title="Queue">
+        {/* queue: sebelumnya text-primary statis (bug), sekarang reflect showQueue state */}
+        <button
+          onClick={toggleQueue}
+          className={`transition-colors ${showQueue ? "text-primary" : "text-muted-foreground hover:text-white"}`}
+          title="Queue"
+        >
           <ListMusic className="w-4 h-4" strokeWidth={2} />
         </button>
 

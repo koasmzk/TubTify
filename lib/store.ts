@@ -18,6 +18,8 @@ type LyricsCacheEntry = {
   syncedLyrics: LyricLine[] | null;
 };
 
+type RepeatMode = "off" | "all" | "one";
+
 type PlayerState = {
   currentTrack: Track | null;
   isPlaying: boolean;
@@ -29,6 +31,12 @@ type PlayerState = {
   currentTime: number;
   seekRequest: number | null;
   lyricsCache: Record<string, LyricsCacheEntry>;
+
+  // --- state baru ---
+  isShuffle: boolean;
+  repeatMode: RepeatMode;
+  showQueue: boolean;
+  likedTrackIds: Set<string>;
 
   playTrack: (track: Track, queue?: Track[]) => void;
   playNext: () => Promise<void>;
@@ -42,15 +50,27 @@ type PlayerState = {
   setCurrentTime: (time: number) => void;
   requestSeek: (time: number) => void;
   clearSeekRequest: () => void;
+
+  toggleShuffle: () => void;
+  cycleRepeat: () => void;
+  toggleQueue: () => void;
+  toggleLike: (trackId: string) => void;
 };
 
-// setiap kali currentTrack diganti (dari queue, related, dsb), cek dulu
-// apakah lirik-nya udah pernah kita fetch sebelumnya -> pakai dari cache
-// biar gak balik "No lyrics available" padahal sebenarnya udah pernah ke-resolve
 function enrichWithCache(track: Track, cache: Record<string, LyricsCacheEntry>): Track {
   const cached = cache[track.id];
   if (!cached) return track;
   return { ...track, lyrics: cached.lyrics, syncedLyrics: cached.syncedLyrics };
+}
+
+// pilih index random di queue selain queueIndex saat ini (biar gak dobel lagu yang sama)
+function pickShuffleIndex(queue: Track[], excludeIndex: number): number {
+  if (queue.length <= 1) return 0;
+  let idx = Math.floor(Math.random() * queue.length);
+  while (idx === excludeIndex) {
+    idx = Math.floor(Math.random() * queue.length);
+  }
+  return idx;
 }
 
 export const usePlayerStore = create<PlayerState>((set, get) => ({
@@ -65,6 +85,11 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   seekRequest: null,
   lyricsCache: {},
 
+  isShuffle: false,
+  repeatMode: "off",
+  showQueue: false,
+  likedTrackIds: new Set(),
+
   playTrack: (track, queue = []) => {
     const { lyricsCache } = get();
     const idx = queue.findIndex((t) => t.id === track.id);
@@ -77,11 +102,12 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   },
 
   playNext: async () => {
-    const { queue, queueIndex, currentTrack, isFetchingNext, lyricsCache } = get();
-    const nextIndex = queueIndex + 1;
+    const { queue, queueIndex, currentTrack, isFetchingNext, lyricsCache, isShuffle, repeatMode } = get();
 
-    // masih ada lagu tersisa di queue saat ini -> langsung next
-    if (nextIndex < queue.length) {
+    // masih ada slot di queue -> shuffle pilih random index, kalau gak ya next sequential
+    const hasMoreInQueue = isShuffle ? queue.length > 1 : queueIndex + 1 < queue.length;
+    if (hasMoreInQueue) {
+      const nextIndex = isShuffle ? pickShuffleIndex(queue, queueIndex) : queueIndex + 1;
       set({
         currentTrack: enrichWithCache(queue[nextIndex], lyricsCache),
         queueIndex: nextIndex,
@@ -90,7 +116,6 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       return;
     }
 
-    // queue habis -> ambil rekomendasi related (mix) dari /api/related
     if (!currentTrack || isFetchingNext) return;
     set({ isFetchingNext: true });
     try {
@@ -102,12 +127,22 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
 
       if (related.length > 0) {
         const freshCache = get().lyricsCache;
-        set((state) => ({
-          queue: [...state.queue, ...related],
+        const newQueue = [...get().queue, ...related];
+        const nextIndex = isShuffle ? pickShuffleIndex(newQueue, queueIndex) : newQueue.length - related.length;
+        set({
+          queue: newQueue,
           queueIndex: nextIndex,
-          currentTrack: enrichWithCache(related[0], freshCache),
+          currentTrack: enrichWithCache(newQueue[nextIndex], freshCache),
           isPlaying: true,
-        }));
+        });
+      } else if (repeatMode === "all" && queue.length > 0) {
+        // gak ada related lagi -> loop balik ke awal queue
+        const nextIndex = isShuffle ? pickShuffleIndex(queue, queueIndex) : 0;
+        set({
+          currentTrack: enrichWithCache(queue[nextIndex], get().lyricsCache),
+          queueIndex: nextIndex,
+          isPlaying: true,
+        });
       } else {
         set({ isPlaying: false });
       }
@@ -171,4 +206,23 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   setCurrentTime: (time) => set({ currentTime: time }),
   requestSeek: (time) => set({ seekRequest: time }),
   clearSeekRequest: () => set({ seekRequest: null }),
+
+  toggleShuffle: () => set((state) => ({ isShuffle: !state.isShuffle })),
+
+  cycleRepeat: () =>
+    set((state) => {
+      const order: RepeatMode[] = ["off", "all", "one"];
+      const next = order[(order.indexOf(state.repeatMode) + 1) % order.length];
+      return { repeatMode: next };
+    }),
+
+  toggleQueue: () => set((state) => ({ showQueue: !state.showQueue })),
+
+  toggleLike: (trackId) =>
+    set((state) => {
+      const next = new Set(state.likedTrackIds);
+      if (next.has(trackId)) next.delete(trackId);
+      else next.add(trackId);
+      return { likedTrackIds: next };
+    }),
 }));
