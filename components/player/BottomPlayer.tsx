@@ -17,6 +17,7 @@ import {
   Speaker,
   Volume2,
   Maximize2,
+  Minimize2,
   Heart,
   Check,
   AlertCircle,
@@ -79,12 +80,15 @@ export default function BottomPlayer() {
 
   const isShuffle = usePlayerStore((state) => state.isShuffle);
   const toggleShuffle = usePlayerStore((state) => state.toggleShuffle);
-  const repeatMode = usePlayerStore((state) => state.repeatMode); 
+  const repeatMode = usePlayerStore((state) => state.repeatMode);
   const cycleRepeat = usePlayerStore((state) => state.cycleRepeat);
   const showQueue = usePlayerStore((state) => state.showQueue);
   const toggleQueue = usePlayerStore((state) => state.toggleQueue);
   const likedTrackIds = usePlayerStore((state) => state.likedTrackIds);
   const toggleLike = usePlayerStore((state) => state.toggleLike);
+
+  const isImmersive = usePlayerStore((state) => state.isImmersive);
+  const setImmersive = usePlayerStore((state) => state.setImmersive);
 
   const isLiked = currentTrack ? likedTrackIds.has(currentTrack.id) : false;
 
@@ -98,6 +102,8 @@ export default function BottomPlayer() {
   const [outputMenuOpen, setOutputMenuOpen] = useState(false);
   const [labelsRequested, setLabelsRequested] = useState(false);
   const [outputError, setOutputError] = useState<string | null>(null);
+
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   useEffect(() => {
     if (!currentTrack || !audioRef.current) return;
@@ -188,6 +194,17 @@ export default function BottomPlayer() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [outputMenuOpen]);
 
+  // sinkronisasi state fullscreen browser, termasuk kalau keluar via Esc (bukan lewat tombol)
+  useEffect(() => {
+    const handleFsChange = () => {
+      const active = !!document.fullscreenElement;
+      setIsFullscreen(active);
+      if (!active) setImmersive(false);
+    };
+    document.addEventListener("fullscreenchange", handleFsChange);
+    return () => document.removeEventListener("fullscreenchange", handleFsChange);
+  }, [setImmersive]);
+
   const requestDeviceLabels = async () => {
     setOutputError(null);
 
@@ -248,6 +265,21 @@ export default function BottomPlayer() {
     const newTime = (value[0] / 100) * duration;
     audioRef.current.currentTime = newTime;
     setLocalTime(newTime);
+  };
+
+  const handleFullscreen = async () => {
+    try {
+      if (!document.fullscreenElement) {
+        await document.documentElement.requestFullscreen();
+        setImmersive(true);
+        if (!showLyrics) toggleLyrics();
+      } else {
+        await document.exitFullscreen();
+        setImmersive(false);
+      }
+    } catch (err) {
+      console.warn("Fullscreen request failed:", err);
+    }
   };
 
   const activeDevice = outputDevices.find((d) => d.deviceId === activeOutputId);
@@ -443,8 +475,16 @@ export default function BottomPlayer() {
             className="w-full cursor-pointer h-1"
           />
         </div>
-        <button className="text-muted-foreground hover:text-white transition-colors" title="Full screen">
-          <Maximize2 className="w-4 h-4" strokeWidth={2} />
+        <button
+          onClick={handleFullscreen}
+          className="text-muted-foreground hover:text-white transition-colors"
+          title={isFullscreen ? "Exit full screen" : "Full screen"}
+        >
+          {isFullscreen ? (
+            <Minimize2 className="w-4 h-4" strokeWidth={2} />
+          ) : (
+            <Maximize2 className="w-4 h-4" strokeWidth={2} />
+          )}
         </button>
       </div>
     </footer>

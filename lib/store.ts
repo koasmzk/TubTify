@@ -32,11 +32,11 @@ type PlayerState = {
   seekRequest: number | null;
   lyricsCache: Record<string, LyricsCacheEntry>;
 
-  // --- state baru ---
   isShuffle: boolean;
   repeatMode: RepeatMode;
   showQueue: boolean;
   likedTrackIds: Set<string>;
+  isImmersive: boolean;
 
   playTrack: (track: Track, queue?: Track[]) => void;
   playNext: () => Promise<void>;
@@ -55,6 +55,7 @@ type PlayerState = {
   cycleRepeat: () => void;
   toggleQueue: () => void;
   toggleLike: (trackId: string) => void;
+  setImmersive: (value: boolean) => void;
 };
 
 function enrichWithCache(track: Track, cache: Record<string, LyricsCacheEntry>): Track {
@@ -89,6 +90,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   repeatMode: "off",
   showQueue: false,
   likedTrackIds: new Set(),
+  isImmersive: false,
 
   playTrack: (track, queue = []) => {
     const { lyricsCache } = get();
@@ -225,4 +227,6 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       else next.add(trackId);
       return { likedTrackIds: next };
     }),
+
+  setImmersive: (value) => set({ isImmersive: value }),
 }));
