@@ -16,6 +16,7 @@ import {
   Headphones,
   Speaker,
   Volume2,
+  VolumeX,
   Maximize2,
   Minimize2,
   Heart,
@@ -95,6 +96,7 @@ export default function BottomPlayer() {
   const [localTime, setLocalTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(60);
+  const [isMuted, setIsMuted] = useState(false);
 
   const [outputSupported, setOutputSupported] = useState(true);
   const [outputDevices, setOutputDevices] = useState<OutputDevice[]>([]);
@@ -140,8 +142,8 @@ export default function BottomPlayer() {
   }, [isPlaying]);
 
   useEffect(() => {
-    if (audioRef.current) audioRef.current.volume = volume / 100;
-  }, [volume]);
+    if (audioRef.current) audioRef.current.volume = isMuted ? 0 : volume / 100;
+  }, [volume, isMuted]);
 
   useEffect(() => {
     if (seekRequest === null || !audioRef.current) return;
@@ -280,6 +282,16 @@ export default function BottomPlayer() {
     } catch (err) {
       console.warn("Fullscreen request failed:", err);
     }
+  };
+
+  const handleToggleMute = () => {
+    setIsMuted((v) => !v);
+  };
+
+  const handleVolumeChange = (v: number[]) => {
+    setVolume(v[0]);
+    // kalau lagi mute terus user geser slider, otomatis unmute
+    if (isMuted && v[0] > 0) setIsMuted(false);
   };
 
   const activeDevice = outputDevices.find((d) => d.deviceId === activeOutputId);
@@ -464,20 +476,32 @@ export default function BottomPlayer() {
         </div>
 
         <div className="flex items-center gap-2 w-24 group">
-          <button className="text-muted-foreground hover:text-white transition-colors">
-            <Volume2 className="w-4 h-4" strokeWidth={2} />
+          <button
+            onClick={handleToggleMute}
+            className={`transition-colors ${
+              isMuted ? "text-primary" : "text-muted-foreground hover:text-white"
+            }`}
+            title={isMuted ? "Unmute" : "Mute"}
+          >
+            {isMuted || volume === 0 ? (
+              <VolumeX className="w-4 h-4" strokeWidth={2} />
+            ) : (
+              <Volume2 className="w-4 h-4" strokeWidth={2} />
+            )}
           </button>
           <Slider
-            value={[volume]}
+            value={[isMuted ? 0 : volume]}
             max={100}
             step={1}
-            onValueChange={(v) => setVolume(v[0])}
+            onValueChange={handleVolumeChange}
             className="w-full cursor-pointer h-1"
           />
         </div>
         <button
           onClick={handleFullscreen}
-          className="text-muted-foreground hover:text-white transition-colors"
+          className={`transition-colors ${
+            isFullscreen ? "text-primary" : "text-muted-foreground hover:text-white"
+          }`}
           title={isFullscreen ? "Exit full screen" : "Full screen"}
         >
           {isFullscreen ? (
