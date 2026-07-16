@@ -107,7 +107,7 @@ export default function CenterContent() {
       {showLyrics ? (
         <LyricsView />
       ) : (
-        <div className="flex-1 rounded-xl overflow-y-auto scrollbar-none relative group">
+        <div className="flex-1 rounded-xl overflow-y-auto overflow-x-hidden scrollbar-none relative group">
           {/* Background Gradient */}
           <div className="absolute inset-0 bg-gradient-to-b from-[#34225f] via-[#111111] to-[#000000] -z-10 h-[332px]" />
           <div className="absolute inset-0 bg-black/60 -z-10 h-[332px]" />

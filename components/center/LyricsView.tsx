@@ -3,13 +3,11 @@
 
 import { useEffect, useRef } from "react";
 import { usePlayerStore } from "@/lib/store";
-import { usePalette } from "@/lib/usePalette";
 
 export default function LyricsView() {
   const currentTrack = usePlayerStore((state) => state.currentTrack);
   const currentTime = usePlayerStore((state) => state.currentTime);
   const requestSeek = usePlayerStore((state) => state.requestSeek);
-  const dominantColor = usePalette(currentTrack?.cover);
 
   const activeLineRef = useRef<HTMLButtonElement>(null);
 
@@ -35,11 +33,15 @@ export default function LyricsView() {
   const hasSynced = currentTrack.syncedLyrics && currentTrack.syncedLyrics.length > 0;
 
   return (
-    <div
-      className="flex-1 rounded-xl overflow-hidden relative flex flex-col"
-      style={{ background: `linear-gradient(to bottom, ${dominantColor}, #000000 80%)` }}
-    >
-      <div className="flex items-center gap-4 p-8 pb-4 flex-shrink-0">
+    <div className="flex-1 rounded-xl overflow-hidden relative flex flex-col">
+      <div
+        className="absolute inset-0 bg-cover bg-center"
+        style={{ backgroundImage: `url(${currentTrack.cover})`, filter: "blur(40px)" }}
+      />
+      <div className="absolute inset-0 bg-black/60" />
+      <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/50 to-black" />
+
+      <div className="relative flex items-center gap-4 p-8 pb-4 flex-shrink-0">
         <img src={currentTrack.cover} alt={currentTrack.title} className="w-16 h-16 rounded-md object-cover shadow-lg" />
         <div>
           <h2 className="text-xl font-bold text-white">{currentTrack.title}</h2>
@@ -47,7 +49,7 @@ export default function LyricsView() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto scrollbar-none px-8 pb-32">
+      <div className="relative flex-1 overflow-y-auto overflow-x-hidden scrollbar-none px-8 pb-32">
         {hasSynced ? (
           <div className="max-w-2xl mx-auto space-y-6 py-12">
             {currentTrack.syncedLyrics!.map((line, i) => (
@@ -67,12 +69,12 @@ export default function LyricsView() {
           <p className="text-white text-2xl leading-relaxed whitespace-pre-line max-w-2xl mx-auto py-12">
             {currentTrack.lyrics}
           </p>
-          ) : (
-            <div className="py-12 text-center text-muted-foreground">
-              <p className="font-bold">No lyrics are available for this song.</p>
-              <p>Lyrics will appear when they become available.</p>
-            </div>
-          )}
+        ) : (
+          <div className="py-12 text-center text-muted-foreground">
+            <p className="font-bold">No lyrics are available for this song.</p>
+            <p>Lyrics will appear when they become available.</p>
+          </div>
+        )}
       </div>
     </div>
   );
