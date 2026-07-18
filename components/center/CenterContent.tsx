@@ -24,6 +24,17 @@ const RECOMMENDED = [
   { id: 5, title: "Time Capsule", artist: "Your favorites from the past", gradient: "bg-gradient-to-br from-blue-600 to-indigo-800" },
 ];
 
+// Palet warna dasar buat header gradient — dipilih random tiap page load (via useEffect, client-only)
+const HEADER_GRADIENTS = [
+  "#4a2d7a", // ungu
+  "#7a2d4a", // merah marun
+  "#2d5f7a", // biru teal
+  "#7a5f2d", // oranye gelap
+  "#2d3f7a", // biru navy
+  "#4f7a2d", // hijau olive
+  "#7a2d6e", // magenta
+];
+
 type Track = {
   id: string;
   title: string;
@@ -80,6 +91,13 @@ export default function CenterContent() {
   const [showAllTracks, setShowAllTracks] = useState(false); // toggle "From YouTube": slider <-> grid
   const [showAllRecommended, setShowAllRecommended] = useState(false); // toggle "Recommended": slider <-> grid
 
+  // default statis (sama di server & client) biar gak hydration mismatch, baru di-random-in di useEffect
+  const [headerGradient, setHeaderGradient] = useState(HEADER_GRADIENTS[0]);
+
+  useEffect(() => {
+    setHeaderGradient(HEADER_GRADIENTS[Math.floor(Math.random() * HEADER_GRADIENTS.length)]);
+  }, []);
+
   const playTrack = usePlayerStore((state) => state.playTrack);
   const searchQuery = usePlayerStore((state) => state.searchQuery);
   const showLyrics = usePlayerStore((state) => state.showLyrics);
@@ -107,10 +125,14 @@ export default function CenterContent() {
       {showLyrics ? (
         <LyricsView />
       ) : (
-        <div className="flex-1 rounded-xl overflow-y-auto overflow-x-hidden scrollbar-none relative group">
-          {/* Background Gradient */}
-          <div className="absolute inset-0 bg-gradient-to-b from-[#34225f] via-[#111111] to-[#000000] -z-10 h-[332px]" />
-          <div className="absolute inset-0 bg-black/60 -z-10 h-[332px]" />
+        <div className="flex-1 rounded-xl overflow-y-auto overflow-x-hidden scrollbar-none relative z-0 group">
+          {/* Background Gradient — radial dari kiri-atas, fade soft ke transparan/hitam ala YT Music */}
+          <div
+            className="absolute inset-0 -z-10 h-[332px]"
+            style={{
+              background: `radial-gradient(ellipse 100% 80% at 15% 0%, ${headerGradient} 0%, #111111 55%, #000000 100%)`,
+            }}
+          />
 
           <div className="p-6 relative z-0">
             {/* Filters */}
@@ -148,7 +170,6 @@ export default function CenterContent() {
                 <h2 className="text-2xl font-bold text-white hover:underline cursor-pointer">
                   {searchQuery ? `Results for "${searchQuery}"` : "From YouTube"}
                 </h2>
-                {/* toggle label berubah sesuai mode aktif */}
                 <button
                   onClick={() => setShowAllTracks((v) => !v)}
                   className="text-sm font-bold text-muted-foreground hover:underline"
@@ -158,12 +179,10 @@ export default function CenterContent() {
               </div>
 
               {loading ? (
-                // skeleton placeholder selama fetch
                 <div className="flex gap-6 overflow-x-auto scrollbar-none pb-4 -mx-6 px-6">
                   {Array.from({ length: 5 }).map((_, i) => <SkeletonCard key={i} />)}
                 </div>
               ) : showAllTracks ? (
-                // mode grid: semua track keliatan sekaligus, gak perlu slider
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-6">
                   {tracks.map((track) => (
                     <motion.div
@@ -186,7 +205,6 @@ export default function CenterContent() {
                   ))}
                 </div>
               ) : (
-                // mode default: slider horizontal + tombol panah
                 <HorizontalSlider>
                   {tracks.map((track) => (
                     <motion.div
@@ -249,7 +267,6 @@ export default function CenterContent() {
               </div>
 
               {showAllRecommended ? (
-                // mode grid, sama pattern kayak From YouTube
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-6">
                   {RECOMMENDED.map((item) => (
                     <motion.div
