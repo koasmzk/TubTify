@@ -19,6 +19,7 @@ type LyricsCacheEntry = {
 };
 
 type RepeatMode = "off" | "all" | "one";
+type FullscreenSource = "topnav" | "player" | null;
 
 type PlayerState = {
   currentTrack: Track | null;
@@ -37,6 +38,7 @@ type PlayerState = {
   showQueue: boolean;
   likedTrackIds: Set<string>;
   isImmersive: boolean;
+  fullscreenSource: FullscreenSource; // NEW: nandain siapa yang trigger fullscreen (topnav vs player)
 
   playTrack: (track: Track, queue?: Track[]) => void;
   playNext: () => Promise<void>;
@@ -45,6 +47,7 @@ type PlayerState = {
   setIsPlaying: (val: boolean) => void;
   setSearchQuery: (q: string) => void;
   toggleLyrics: () => void;
+  setShowLyrics: (val: boolean) => void;
   setCurrentTrackLyrics: (lyrics: string | null) => void;
   setCurrentTrackSyncedLyrics: (synced: LyricLine[] | null) => void;
   setCurrentTime: (time: number) => void;
@@ -56,6 +59,7 @@ type PlayerState = {
   toggleQueue: () => void;
   toggleLike: (trackId: string) => void;
   setImmersive: (value: boolean) => void;
+  setFullscreenSource: (source: FullscreenSource) => void; // NEW
 };
 
 function enrichWithCache(track: Track, cache: Record<string, LyricsCacheEntry>): Track {
@@ -91,6 +95,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   showQueue: false,
   likedTrackIds: new Set(),
   isImmersive: false,
+  fullscreenSource: null, // NEW
 
   playTrack: (track, queue = []) => {
     const { lyricsCache } = get();
@@ -106,7 +111,6 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   playNext: async () => {
     const { queue, queueIndex, currentTrack, isFetchingNext, lyricsCache, isShuffle, repeatMode } = get();
 
-    // masih ada slot di queue -> shuffle pilih random index, kalau gak ya next sequential
     const hasMoreInQueue = isShuffle ? queue.length > 1 : queueIndex + 1 < queue.length;
     if (hasMoreInQueue) {
       const nextIndex = isShuffle ? pickShuffleIndex(queue, queueIndex) : queueIndex + 1;
@@ -138,7 +142,6 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
           isPlaying: true,
         });
       } else if (repeatMode === "all" && queue.length > 0) {
-        // gak ada related lagi -> loop balik ke awal queue
         const nextIndex = isShuffle ? pickShuffleIndex(queue, queueIndex) : 0;
         set({
           currentTrack: enrichWithCache(queue[nextIndex], get().lyricsCache),
@@ -172,6 +175,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   setIsPlaying: (val) => set({ isPlaying: val }),
   setSearchQuery: (q) => set({ searchQuery: q }),
   toggleLyrics: () => set((state) => ({ showLyrics: !state.showLyrics })),
+  setShowLyrics: (val) => set({ showLyrics: val }),
 
   setCurrentTrackLyrics: (lyrics) =>
     set((state) => {
@@ -229,4 +233,5 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     }),
 
   setImmersive: (value) => set({ isImmersive: value }),
+  setFullscreenSource: (source) => set({ fullscreenSource: source }), // NEW
 }));

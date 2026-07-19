@@ -1,7 +1,7 @@
-// components/layout/TopNav.tsx
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Home, Search, Monitor, Bell, Users, X } from "lucide-react";
 import { usePlayerStore } from "@/lib/store";
 
@@ -17,8 +17,12 @@ export default function TopNav() {
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [showDropdown, setShowDropdown] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const router = useRouter();
 
   const setSearchQuery = usePlayerStore((state) => state.setSearchQuery);
+  const setShowLyrics = usePlayerStore((state) => state.setShowLyrics);
+  const setImmersive = usePlayerStore((state) => state.setImmersive);
+  const setFullscreenSource = usePlayerStore((state) => state.setFullscreenSource);
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -32,28 +36,50 @@ export default function TopNav() {
       try {
         const res = await fetch(`/api/search?q=${encodeURIComponent(input)}`);
         const data = await res.json();
-        setSuggestions((data.tracks ?? []).slice(0, 6)); // batasi 6 biar dropdown gak kepanjangan
+        setSuggestions((data.tracks ?? []).slice(0, 6));
       } catch (err) {
         console.error("Suggestion fetch failed:", err);
       }
-    }, 400); // delay 400ms setelah berhenti ngetik
+    }, 400);
 
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
   }, [input]);
 
-  // submit search (Enter / klik suggestion) → trigger CenterContent fetch full results
   function submitSearch(query: string) {
     setSearchQuery(query);
     setShowDropdown(false);
     setInput(query);
   }
 
+  // Home: keluar dari lyrics/immersive view, balik ke main page
+  function handleHomeClick() {
+    setShowLyrics(false);
+    setImmersive(false);
+    router.push("/");
+  }
+
+  // Monitor icon: toggle native browser fullscreen (page-level, beda sama immersive lyrics di BottomPlayer)
+  function handleFullscreenClick() {
+    if (!document.fullscreenElement) {
+      setFullscreenSource("topnav"); // set dulu SEBELUM request, biar BottomPlayer tau ini bukan dia yang trigger
+      document.documentElement.requestFullscreen().catch((err) => {
+        console.error("Failed to enter fullscreen:", err);
+        setFullscreenSource(null);
+      });
+    } else {
+      document.exitFullscreen(); // reset fullscreenSource ditangani listener fullscreenchange di BottomPlayer
+    }
+  }
+
   return (
     <header className="flex items-center justify-between h-16 shrink-0 px-2 w-full gap-4 z-10">
       <div className="flex items-center">
-        <button className="flex items-center justify-center w-12 h-12 rounded-full bg-[#121212] hover:scale-105 transition-transform duration-200">
+        <button
+          onClick={handleHomeClick}
+          className="flex items-center justify-center w-12 h-12 rounded-full bg-[#121212] hover:scale-105 transition-transform duration-200"
+        >
           <Home className="w-6 h-6 text-white" strokeWidth={2} />
         </button>
       </div>
@@ -81,12 +107,14 @@ export default function TopNav() {
             </button>
           )}
           <span className="w-[1px] h-6 bg-muted-foreground/30 mx-3"></span>
-          <button className="text-muted-foreground hover:text-white transition-colors">
+          <button
+            onClick={handleFullscreenClick}
+            className="text-muted-foreground hover:text-white transition-colors"
+          >
             <Monitor className="w-5 h-5" strokeWidth={2} />
           </button>
         </div>
 
-        {/* Dropdown suggestion */}
         {showDropdown && suggestions.length > 0 && (
           <div
             className="absolute top-[56px] left-0 w-full bg-[#282828] rounded-xl shadow-2xl overflow-hidden z-50"
@@ -109,7 +137,6 @@ export default function TopNav() {
         )}
       </div>
 
-      {/* Right */}
       <div className="flex items-center gap-4">
         <button className="hidden lg:block bg-white text-black font-bold text-sm px-4 py-1.5 rounded-full hover:scale-105 transition-transform duration-200">
           Experimental

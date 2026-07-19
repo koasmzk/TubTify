@@ -90,6 +90,8 @@ export default function BottomPlayer() {
 
   const isImmersive = usePlayerStore((state) => state.isImmersive);
   const setImmersive = usePlayerStore((state) => state.setImmersive);
+  const fullscreenSource = usePlayerStore((state) => state.fullscreenSource);
+  const setFullscreenSource = usePlayerStore((state) => state.setFullscreenSource);
 
   const isLiked = currentTrack ? likedTrackIds.has(currentTrack.id) : false;
 
@@ -196,16 +198,20 @@ export default function BottomPlayer() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [outputMenuOpen]);
 
-  // sinkronisasi state fullscreen browser, termasuk kalau keluar via Esc (bukan lewat tombol)
   useEffect(() => {
     const handleFsChange = () => {
       const active = !!document.fullscreenElement;
-      setIsFullscreen(active);
-      if (!active) setImmersive(false);
+      if (!active) {
+        setIsFullscreen(false);
+        if (fullscreenSource === "player") setImmersive(false);
+        setFullscreenSource(null);
+      } else {
+        setIsFullscreen(fullscreenSource === "player");
+      }
     };
     document.addEventListener("fullscreenchange", handleFsChange);
     return () => document.removeEventListener("fullscreenchange", handleFsChange);
-  }, [setImmersive]);
+  }, [setImmersive, fullscreenSource, setFullscreenSource]);
 
   const requestDeviceLabels = async () => {
     setOutputError(null);
@@ -272,15 +278,23 @@ export default function BottomPlayer() {
   const handleFullscreen = async () => {
     try {
       if (!document.fullscreenElement) {
+        setFullscreenSource("player");
         await document.documentElement.requestFullscreen();
         setImmersive(true);
         if (!showLyrics) toggleLyrics();
-      } else {
+      } else if (fullscreenSource === "player") {
         await document.exitFullscreen();
         setImmersive(false);
+        setFullscreenSource(null);
+      } else {
+        setFullscreenSource("player");
+        setIsFullscreen(true); 
+        setImmersive(true);
+        if (!showLyrics) toggleLyrics();
       }
     } catch (err) {
       console.warn("Fullscreen request failed:", err);
+      setFullscreenSource(null);
     }
   };
 
