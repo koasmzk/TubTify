@@ -16,6 +16,5 @@ export async function GET(req: NextRequest) {
     } catch {
     }
   }
-
   return NextResponse.json(result);
 }
