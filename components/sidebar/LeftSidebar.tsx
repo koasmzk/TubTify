@@ -3,6 +3,7 @@
 
 import { useState } from "react";
 import { Library, Plus, ArrowRight, Search, List } from "lucide-react";
+import { usePlayerStore } from "@/lib/store";
 
 const PLAYLISTS = [
   { id: 1, title: "Liked Songs", subtitle: "Playlist • 53 songs", gradient: "bg-gradient-to-br from-indigo-500 to-purple-800" },
@@ -13,6 +14,7 @@ const PLAYLISTS = [
 
 export default function LeftSidebar() {
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const likedCount = usePlayerStore((state) => state.likedTrackIds.size);
 
   return (
     <div
@@ -80,7 +82,9 @@ export default function LeftSidebar() {
                     {playlist.title}
                   </span>
                   <span className="text-sm text-muted-foreground truncate w-full text-left">
-                    {playlist.subtitle}
+                      {playlist.id === 1
+                        ? `Playlist • ${likedCount} ${likedCount === 1 ? "song" : "songs"}`
+                      : playlist.subtitle}
                   </span>
                 </div>
               )}

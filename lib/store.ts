@@ -58,6 +58,7 @@ type PlayerState = {
   cycleRepeat: () => void;
   toggleQueue: () => void;
   toggleLike: (trackId: string) => void;
+  loadLikes: () => Promise<void>;
   setImmersive: (value: boolean) => void;
   setFullscreenSource: (source: FullscreenSource) => void; // NEW
 };
@@ -224,14 +225,53 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
 
   toggleQueue: () => set((state) => ({ showQueue: !state.showQueue })),
 
-  toggleLike: (trackId) =>
-    set((state) => {
-      const next = new Set(state.likedTrackIds);
-      if (next.has(trackId)) next.delete(trackId);
-      else next.add(trackId);
-      return { likedTrackIds: next };
-    }),
+  toggleLike: (trackId) => {
+    const wasLiked = get().likedTrackIds.has(trackId);
+
+    const apply = (liked: boolean) =>
+      set((state) => {
+        const next = new Set(state.likedTrackIds);
+        if (liked) next.add(trackId);
+        else next.delete(trackId);
+        return { likedTrackIds: next };
+      });
+
+    const { currentTrack, queue } = get();
+    const track = currentTrack?.id === trackId ? currentTrack : queue.find((t) => t.id === trackId);
+    if (!track) return;
+
+    apply(!wasLiked);
+
+    fetch("/api/likes", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        videoId: track.id, // di DB kolomnya videoId
+        title: track.title,
+        artist: track.artist,
+        cover: track.cover,
+      }),
+    })
+      .then((res) => {
+        if (!res.ok) throw new Error(`status ${res.status}`);
+      })
+      .catch((err) => {
+        console.error("Toggle like failed:", err);
+        apply(wasLiked); // rollback
+      });
+  },
+
+  loadLikes: async () => {
+    try {
+      const res = await fetch("/api/likes");
+      if (!res.ok) return;
+      const rows: { videoId: string }[] = await res.json();
+      set({ likedTrackIds: new Set(rows.map((r) => r.videoId)) });
+    } catch (err) {
+      console.error("Load likes failed:", err);
+    }
+  },
 
   setImmersive: (value) => set({ isImmersive: value }),
-  setFullscreenSource: (source) => set({ fullscreenSource: source }), // NEW
+  setFullscreenSource: (source) => set({ fullscreenSource: source }), 
 }));

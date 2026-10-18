@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import TopNav from "@/components/layout/TopNav";
 import LeftSidebar from "@/components/sidebar/LeftSidebar";
 import RightSidebar from "@/components/sidebar/RightSidebar";
@@ -10,6 +11,11 @@ import { usePlayerStore } from "@/lib/store";
 
 export default function Home() {
   const isImmersive = usePlayerStore((state) => state.isImmersive);
+  const loadLikes = usePlayerStore((state) => state.loadLikes);
+
+  useEffect(() => {
+    loadLikes();
+  }, [loadLikes]);
 
   return (
     <div className="flex flex-col h-screen w-full bg-black text-white overflow-hidden">
