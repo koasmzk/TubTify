@@ -1,0 +1,61 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlserver"
+  url      = env("DATABASE_URL") // dibaca dari .env
+}
+
+model User {
+  id        String     @id @default(cuid())
+  createdAt DateTime   @default(now())
+  likes     Like[]
+  playlists Playlist[]
+  history   History[]
+}
+
+model Like {
+  userId  String
+  videoId String   @db.NVarChar(64) // ID YouTube cuma 11 char, batasi biar bisa jadi primary key
+  title   String
+  artist  String
+  cover   String?
+  addedAt DateTime @default(now())
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, videoId]) // satu user nggak bisa like lagu yang sama dua kali
+}
+
+model Playlist {
+  id     String          @id @default(cuid())
+  userId String
+  name   String
+  user   User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tracks PlaylistTrack[]
+}
+
+model PlaylistTrack {
+  playlistId String
+  videoId    String   @db.NVarChar(64)
+  title      String
+  artist     String
+  cover      String?
+  position   Int
+  playlist   Playlist @relation(fields: [playlistId], references: [id], onDelete: Cascade)
+
+  @@id([playlistId, videoId])
+}
+
+model History {
+  id       Int      @id @default(autoincrement())
+  userId   String
+  videoId  String   @db.NVarChar(64)
+  title    String
+  artist   String
+  cover    String?
+  playedAt DateTime @default(now())
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, playedAt])
+}

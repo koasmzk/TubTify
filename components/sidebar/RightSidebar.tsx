@@ -66,7 +66,7 @@ export default function RightSidebar() {
                 </div>
               </button>
             ) : (
-              <p className="text-sm text-muted-foreground">Belum ada lagu yang diputar</p>
+              <p className="text-sm text-muted-foreground">No song playing</p>
             )}
 
             {nextTracks.length > 0 && (
