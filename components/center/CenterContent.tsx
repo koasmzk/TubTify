@@ -6,6 +6,7 @@ import { motion } from "framer-motion";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { usePlayerStore } from "@/lib/store";
 import LyricsView from "@/components/center/LyricsView";
+import LibraryView from "@/components/center/LibraryView"; // NEW
 
 const QUICK_ACCESS = [
   { id: 1, title: "Liked Songs", gradient: "bg-gradient-to-br from-indigo-500 to-purple-800" },
@@ -101,6 +102,8 @@ export default function CenterContent() {
   const playTrack = usePlayerStore((state) => state.playTrack);
   const searchQuery = usePlayerStore((state) => state.searchQuery);
   const showLyrics = usePlayerStore((state) => state.showLyrics);
+  const activeView = usePlayerStore((state) => state.activeView); // NEW
+  const setActiveView = usePlayerStore((state) => state.setActiveView); // NEW
 
   useEffect(() => {
     async function fetchTracks() {
@@ -120,10 +123,13 @@ export default function CenterContent() {
   }, [searchQuery]);
 
   // conditional render di JSX, BUKAN early return sebelum hook lain dideklarasi
+  // Urutan prioritas: lyrics -> halaman library (liked/playlist) -> home
   return (
     <>
       {showLyrics ? (
         <LyricsView />
+      ) : activeView.type !== "home" ? ( // NEW
+        <LibraryView />
       ) : (
         <div className="flex-1 rounded-xl overflow-y-auto overflow-x-hidden scrollbar-none relative z-0 group">
           {/* Background Gradient — radial dari kiri-atas, fade soft ke transparan/hitam ala YT Music */}
@@ -149,6 +155,8 @@ export default function CenterContent() {
                   whileHover={{ backgroundColor: "rgba(255,255,255,0.2)" }}
                   transition={{ duration: 0.2 }}
                   key={item.id}
+                  // NEW: kartu "Liked Songs" (id 1) buka halaman liked; sisanya masih dummy
+                  onClick={() => item.id === 1 && setActiveView({ type: "liked" })}
                   className="bg-[rgba(255,255,255,0.08)] rounded-lg flex items-center h-[60px] overflow-hidden group/card shadow-[0_4px_12px_rgba(0,0,0,0.5)]"
                 >
                   <div className={`w-[60px] h-[60px] flex-shrink-0 ${item.gradient} shadow-[4px_0_12px_rgba(0,0,0,0.3)]`}></div>

@@ -26,6 +26,7 @@ import {
 import { Slider } from "@/components/ui/slider";
 import { MarqueeText } from "@/components/ui/MarqueeText";
 import { usePlayerStore } from "@/lib/store";
+import AddToPlaylistButton from "@/components/player/AddToPlaylistButton";
 
 function formatTime(seconds: number) {
   if (!seconds || isNaN(seconds)) return "0:00";
@@ -510,6 +511,7 @@ export default function BottomPlayer() {
             >
               <Heart className="w-4 h-4" strokeWidth={2} fill={isLiked ? "currentColor" : "none"} />
             </button>
+            <AddToPlaylistButton /> 
           </div>
           <div className="flex items-center justify-center w-1/3 min-w-[220px]">{playbackControls}</div>
           <div className="flex items-center justify-end gap-3 w-1/3 min-w-[180px]">{rightControls}</div>
@@ -544,6 +546,7 @@ export default function BottomPlayer() {
             >
               <Heart className="w-4 h-4" strokeWidth={2} fill={isLiked ? "currentColor" : "none"} />
             </button>
+            <AddToPlaylistButton /> 
           </div>
 
           <div className="flex flex-col items-center justify-center max-w-[722px] w-1/3">

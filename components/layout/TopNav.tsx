@@ -21,6 +21,7 @@ export default function TopNav() {
 
   const setSearchQuery = usePlayerStore((state) => state.setSearchQuery);
   const setShowLyrics = usePlayerStore((state) => state.setShowLyrics);
+  const setActiveView = usePlayerStore((state) => state.setActiveView); // NEW
   const setImmersive = usePlayerStore((state) => state.setImmersive);
   const setFullscreenSource = usePlayerStore((state) => state.setFullscreenSource);
 
@@ -48,13 +49,15 @@ export default function TopNav() {
   }, [input]);
 
   function submitSearch(query: string) {
+    setActiveView({ type: "home" }); // NEW: keluar dari halaman library, hasil search tampil di home
     setSearchQuery(query);
     setShowDropdown(false);
     setInput(query);
   }
 
-  // Home: keluar dari lyrics/immersive view, balik ke main page
+  // Home: keluar dari lyrics/immersive view + halaman library, balik ke main page
   function handleHomeClick() {
+    setActiveView({ type: "home" }); // NEW
     setShowLyrics(false);
     setImmersive(false);
     router.push("/");

@@ -21,6 +21,9 @@ type LyricsCacheEntry = {
 type RepeatMode = "off" | "all" | "one";
 type FullscreenSource = "topnav" | "player" | null;
 
+export type PlaylistSummary = { id: string; name: string; trackCount: number; cover: string | null };
+export type ActiveView = { type: "home" } | { type: "liked" } | { type: "playlist"; id: string };
+
 type PlayerState = {
   currentTrack: Track | null;
   isPlaying: boolean;
@@ -57,10 +60,20 @@ type PlayerState = {
   toggleShuffle: () => void;
   cycleRepeat: () => void;
   toggleQueue: () => void;
-  toggleLike: (trackId: string) => void;
+  toggleLike: (trackId: string, track?: Track) => void;
   loadLikes: () => Promise<void>;
   setImmersive: (value: boolean) => void;
   setFullscreenSource: (source: FullscreenSource) => void; // NEW
+
+  likesVersion: number; // naik tiap POST like selesai -> LibraryView tau kapan refetch
+  activeView: ActiveView;
+  playlists: PlaylistSummary[];
+  setActiveView: (v: ActiveView) => void;
+  loadPlaylists: () => Promise<void>;
+  createPlaylist: (name: string) => Promise<PlaylistSummary | null>;
+  renamePlaylist: (id: string, name: string) => Promise<void>;
+  deletePlaylist: (id: string) => Promise<void>;
+  addToPlaylist: (playlistId: string, track: Track) => Promise<"added" | "exists" | "error">;
 };
 
 function enrichWithCache(track: Track, cache: Record<string, LyricsCacheEntry>): Track {
@@ -97,6 +110,9 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   likedTrackIds: new Set(),
   isImmersive: false,
   fullscreenSource: null, // NEW
+  likesVersion: 0,
+  activeView: { type: "home" },
+  playlists: [],
 
   playTrack: (track, queue = []) => {
     const { lyricsCache } = get();
@@ -225,7 +241,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
 
   toggleQueue: () => set((state) => ({ showQueue: !state.showQueue })),
 
-  toggleLike: (trackId) => {
+  toggleLike: (trackId, trackOverride) => {
     const wasLiked = get().likedTrackIds.has(trackId);
 
     const apply = (liked: boolean) =>
@@ -236,25 +252,29 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
         return { likedTrackIds: next };
       });
 
+    // Metadata: pakai override kalau ada (dari LibraryView), kalau nggak cari di currentTrack/queue
     const { currentTrack, queue } = get();
-    const track = currentTrack?.id === trackId ? currentTrack : queue.find((t) => t.id === trackId);
+    const track =
+      trackOverride ??
+      (currentTrack?.id === trackId ? currentTrack : queue.find((t) => t.id === trackId));
     if (!track) return;
 
-    apply(!wasLiked);
+    apply(!wasLiked); // optimistic
 
     fetch("/api/likes", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        videoId: track.id, // di DB kolomnya videoId
+        videoId: track.id,
         title: track.title,
         artist: track.artist,
         cover: track.cover,
-        duration: track.duration, 
+        duration: track.duration,
       }),
     })
       .then((res) => {
         if (!res.ok) throw new Error(`status ${res.status}`);
+        set((s) => ({ likesVersion: s.likesVersion + 1 })); // DB udah up-to-date
       })
       .catch((err) => {
         console.error("Toggle like failed:", err);
@@ -270,6 +290,90 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       set({ likedTrackIds: new Set(rows.map((r) => r.videoId)) });
     } catch (err) {
       console.error("Load likes failed:", err);
+    }
+  },
+
+  // Pindah halaman. showLyrics ikut ditutup biar halaman library kelihatan.
+  setActiveView: (v) => set({ activeView: v, showLyrics: false }),
+
+  loadPlaylists: async () => {
+    try {
+      const res = await fetch("/api/playlists");
+      if (!res.ok) return;
+      set({ playlists: await res.json() });
+    } catch (err) {
+      console.error("Load playlists failed:", err);
+    }
+  },
+
+  createPlaylist: async (name) => {
+    try {
+      const res = await fetch("/api/playlists", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name }),
+      });
+      if (!res.ok) return null;
+      const created: PlaylistSummary = await res.json();
+      set((s) => ({ playlists: [created, ...s.playlists] }));
+      return created;
+    } catch {
+      return null;
+    }
+  },
+
+  renamePlaylist: async (id, name) => {
+    try {
+      const res = await fetch(`/api/playlists/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name }),
+      });
+      if (!res.ok) return;
+      const clean = name.trim().slice(0, 100);
+      set((s) => ({ playlists: s.playlists.map((p) => (p.id === id ? { ...p, name: clean } : p)) }));
+    } catch (err) {
+      console.error("Rename failed:", err);
+    }
+  },
+
+  deletePlaylist: async (id) => {
+    try {
+      const res = await fetch(`/api/playlists/${id}`, { method: "DELETE" });
+      if (!res.ok) return;
+      set((s) => ({
+        playlists: s.playlists.filter((p) => p.id !== id),
+        // kalau lagi buka playlist yang dihapus -> balik ke home
+        activeView:
+          s.activeView.type === "playlist" && s.activeView.id === id ? { type: "home" } : s.activeView,
+      }));
+    } catch (err) {
+      console.error("Delete failed:", err);
+    }
+  },
+
+  addToPlaylist: async (playlistId, track) => {
+    try {
+      const res = await fetch(`/api/playlists/${playlistId}/tracks`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          videoId: track.id,
+          title: track.title,
+          artist: track.artist,
+          cover: track.cover,
+          duration: track.duration,
+        }),
+      });
+      if (!res.ok) return "error";
+      const data = await res.json();
+      if (data.added) {
+        get().loadPlaylists(); // refresh jumlah lagu + cover di sidebar
+        return "added";
+      }
+      return "exists";
+    } catch {
+      return "error";
     }
   },
 

@@ -12,10 +12,13 @@ import { usePlayerStore } from "@/lib/store";
 export default function Home() {
   const isImmersive = usePlayerStore((state) => state.isImmersive);
   const loadLikes = usePlayerStore((state) => state.loadLikes);
+  const loadPlaylists = usePlayerStore((state) => state.loadPlaylists); // NEW
 
+  // Sekali pas app dibuka: ambil liked songs + daftar playlist user dari DB
   useEffect(() => {
     loadLikes();
-  }, [loadLikes]);
+    loadPlaylists(); // NEW
+  }, [loadLikes, loadPlaylists]);
 
   return (
     <div className="flex flex-col h-screen w-full bg-black text-white overflow-hidden">
