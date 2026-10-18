@@ -1,0 +1,65 @@
+// prisma/schema.prisma
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlserver"
+  url      = env("DATABASE_URL") // dibaca dari .env
+}
+
+model User {
+  id        String     @id @default(cuid())
+  createdAt DateTime   @default(now())
+  likes     Like[]
+  playlists Playlist[]
+  history   History[]
+}
+
+model Like {
+  userId   String
+  videoId  String   @db.NVarChar(64) // ID YouTube cuma 11 char, dibatasi biar bisa jadi primary key
+  title    String
+  artist   String
+  cover    String?
+  duration Int      @default(0) // detik, dipakai pas lagu diputar dari library
+  addedAt  DateTime @default(now())
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, videoId]) // satu user nggak bisa like lagu yang sama dua kali
+}
+
+model Playlist {
+  id        String          @id @default(cuid())
+  userId    String
+  name      String
+  createdAt DateTime        @default(now()) // buat urutan "Recents"
+  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tracks    PlaylistTrack[]
+}
+
+model PlaylistTrack {
+  playlistId String
+  videoId    String   @db.NVarChar(64)
+  title      String
+  artist     String
+  cover      String?
+  duration   Int      @default(0)
+  position   Int
+  playlist   Playlist @relation(fields: [playlistId], references: [id], onDelete: Cascade)
+
+  @@id([playlistId, videoId]) // lagu yang sama nggak bisa dobel di satu playlist
+}
+
+model History {
+  id       Int      @id @default(autoincrement())
+  userId   String
+  videoId  String   @db.NVarChar(64)
+  title    String
+  artist   String
+  cover    String?
+  playedAt DateTime @default(now())
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, playedAt])
+}

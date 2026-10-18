@@ -41,6 +41,3 @@ Thumbs.db
 bin/yt-dlp.exe
 bin/yt-dlp-plugins/
 
-# prisma
-prisma/schema.prisma
-prisma/
