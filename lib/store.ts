@@ -250,6 +250,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
         title: track.title,
         artist: track.artist,
         cover: track.cover,
+        duration: track.duration, 
       }),
     })
       .then((res) => {
